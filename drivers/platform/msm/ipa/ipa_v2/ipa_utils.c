@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2017, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2018, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -37,7 +37,7 @@
 
 #define IPA_TAG_SLEEP_MIN_USEC (1000)
 #define IPA_TAG_SLEEP_MAX_USEC (2000)
-#define IPA_FORCE_CLOSE_TAG_PROCESS_TIMEOUT (10 * HZ)
+#define IPA_FORCE_CLOSE_TAG_PROCESS_TIMEOUT IPA_TIMEOUT(10)
 #define IPA_BCR_REG_VAL (0x001FFF7F)
 #define IPA_AGGR_GRAN_MIN (1)
 #define IPA_AGGR_GRAN_MAX (32)
@@ -5028,7 +5028,7 @@ static int ipa2_generate_tag_process(void)
 {
 	int res;
 
-	res = ipa_tag_process(NULL, 0, HZ);
+	res = ipa_tag_process(NULL, 0, IPA_TIMEOUT(1));
 	if (res)
 		IPAERR("TAG process failed\n");
 
@@ -5071,6 +5071,7 @@ int ipa2_bind_api_controller(enum ipa_hw_type ipa_hw_type,
 	api_ctrl->ipa_cfg_ep_holb_by_client = ipa2_cfg_ep_holb_by_client;
 	api_ctrl->ipa_cfg_ep_ctrl = ipa2_cfg_ep_ctrl;
 	api_ctrl->ipa_add_hdr = ipa2_add_hdr;
+	api_ctrl->ipa_add_hdr_usr = ipa2_add_hdr_usr;
 	api_ctrl->ipa_del_hdr = ipa2_del_hdr;
 	api_ctrl->ipa_commit_hdr = ipa2_commit_hdr;
 	api_ctrl->ipa_reset_hdr = ipa2_reset_hdr;
@@ -5080,6 +5081,7 @@ int ipa2_bind_api_controller(enum ipa_hw_type ipa_hw_type,
 	api_ctrl->ipa_add_hdr_proc_ctx = ipa2_add_hdr_proc_ctx;
 	api_ctrl->ipa_del_hdr_proc_ctx = ipa2_del_hdr_proc_ctx;
 	api_ctrl->ipa_add_rt_rule = ipa2_add_rt_rule;
+	api_ctrl->ipa_add_rt_rule_usr = ipa2_add_rt_rule_usr;
 	api_ctrl->ipa_del_rt_rule = ipa2_del_rt_rule;
 	api_ctrl->ipa_commit_rt = ipa2_commit_rt;
 	api_ctrl->ipa_reset_rt = ipa2_reset_rt;
@@ -5088,6 +5090,7 @@ int ipa2_bind_api_controller(enum ipa_hw_type ipa_hw_type,
 	api_ctrl->ipa_query_rt_index = ipa2_query_rt_index;
 	api_ctrl->ipa_mdfy_rt_rule = ipa2_mdfy_rt_rule;
 	api_ctrl->ipa_add_flt_rule = ipa2_add_flt_rule;
+	api_ctrl->ipa_add_flt_rule_usr = ipa2_add_flt_rule_usr;
 	api_ctrl->ipa_del_flt_rule = ipa2_del_flt_rule;
 	api_ctrl->ipa_mdfy_flt_rule = ipa2_mdfy_flt_rule;
 	api_ctrl->ipa_commit_flt = ipa2_commit_flt;
