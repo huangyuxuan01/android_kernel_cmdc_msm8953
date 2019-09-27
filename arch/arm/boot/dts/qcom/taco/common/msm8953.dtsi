@@ -66,19 +66,19 @@
 		modem_mem: modem_region@0 {
 			compatible = "removed-dma-pool";
 			no-map;
-			reg = <0x0 0x86c00000 0x0 0x6000000>;
+			reg = <0x0 0x86c00000 0x0 0x6a00000>;
 		};
 
 		adsp_fw_mem: adsp_fw_region@0 {
 			compatible = "removed-dma-pool";
 			no-map;
-			reg = <0x0 0x8cc00000 0x0 0x1800000>;
+			reg = <0x0 0x8d600000 0x0 0x1100000>;
 		};
 
 		wcnss_fw_mem: wcnss_fw_region@0 {
 			compatible = "removed-dma-pool";
 			no-map;
-			reg = <0x0 0x8e400000 0x0 0x1000000>;
+			reg = <0x0 0x8e700000 0x0 0x700000>;
 		};
 
 		venus_mem: venus_region@0 {
@@ -1739,7 +1739,6 @@
 		qcom,msm-bus,num-cases = <4>;
 		qcom,msm-bus,num-paths = <1>;
 		qcom,support-bus-scaling;
-		qcom,appsbl-qseecom-support;
 		qcom,msm-bus,vectors-KBps =
 			<55 512 0 0>,
 			<55 512 0 0>,
@@ -2260,7 +2259,7 @@
 		qcom,qusb-phy-init-seq = <0xF8 0x80
 					0xB3 0x84
 					0x83 0x88
-					0xCD 0x8C
+					0xC0 0x8C
 					0x14 0x9C
 					0x30 0x08
 					0x79 0x0C
