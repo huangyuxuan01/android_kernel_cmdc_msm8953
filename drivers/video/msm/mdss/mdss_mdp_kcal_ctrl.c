@@ -22,6 +22,15 @@
 #include <linux/init.h>
 #include <linux/module.h>
 
+#if defined(CONFIG_MMI_PANEL_NOTIFICATIONS) && defined(CONFIG_FB)
+#include <mach/mmi_panel_notifier.h>
+#include <linux/notifier.h>
+#include <linux/fb.h>
+#elif defined(CONFIG_FB)
+#include <linux/notifier.h>
+#include <linux/fb.h>
+#endif
+
 #include "mdss_mdp.h"
 
 #define DEF_PCC 0x100
@@ -29,6 +38,13 @@
 #define PCC_ADJ 0x80
 
 struct kcal_lut_data {
+#if defined(CONFIG_MMI_PANEL_NOTIFICATIONS) && defined(CONFIG_FB)
+	struct mmi_notifier panel_nb;
+#elif defined(CONFIG_FB)
+	struct device dev;
+	struct notifier_block panel_nb;
+#endif
+	bool queue_changes;
 	int red;
 	int green;
 	int blue;
@@ -133,6 +149,10 @@ static uint32_t igc_Table_RGB[IGC_LUT_ENTRIES] = {
 	48, 32, 16, 0
 };
 
+#ifdef CONFIG_KLAPSE
+struct kcal_lut_data *lut_cpy;
+#endif
+
 struct mdss_mdp_ctl *fb0_ctl = 0;
 
 static int mdss_mdp_kcal_store_fb0_ctl(void)
@@ -167,24 +187,19 @@ static int mdss_mdp_kcal_store_fb0_ctl(void)
 	return 0;
 }
 
-static int mdss_mdp_kcal_display_commit(void)
+static bool mdss_mdp_kcal_is_panel_on(void)
 {
 	int i;
-	int ret = 0;
 	struct mdss_mdp_ctl *ctl;
 	struct mdss_data_type *mdata = mdss_mdp_get_mdata();
 
 	for (i = 0; i < mdata->nctl; i++) {
 		ctl = mdata->ctl_off + i;
-		/* pp setup requires mfd */
-		if ((mdss_mdp_ctl_is_power_on(ctl)) && (ctl->mfd)) {
-			ret = mdss_mdp_pp_setup(ctl);
-			if (ret)
-				pr_err("%s: setup failed: %d\n", __func__, ret);
-		}
+		if (mdss_mdp_ctl_is_power_on(ctl))
+			return true;
 	}
 
-	return ret;
+	return false;
 }
 
 static void mdss_mdp_kcal_update_pcc(struct kcal_lut_data *lut_data)
@@ -327,8 +342,10 @@ static ssize_t kcal_store(struct device *dev, struct device_attribute *attr,
 	lut_data->green = kcal_g;
 	lut_data->blue = kcal_b;
 
-	mdss_mdp_kcal_update_pcc(lut_data);
-	mdss_mdp_kcal_display_commit();
+	if (mdss_mdp_kcal_is_panel_on())
+		mdss_mdp_kcal_update_pcc(lut_data);
+	else
+		lut_data->queue_changes = true;
 
 	return count;
 }
@@ -354,8 +371,10 @@ static ssize_t kcal_min_store(struct device *dev,
 
 	lut_data->minimum = kcal_min;
 
-	mdss_mdp_kcal_update_pcc(lut_data);
-	mdss_mdp_kcal_display_commit();
+	if (mdss_mdp_kcal_is_panel_on())
+		mdss_mdp_kcal_update_pcc(lut_data);
+	else
+		lut_data->queue_changes = true;
 
 	return count;
 }
@@ -381,10 +400,12 @@ static ssize_t kcal_enable_store(struct device *dev,
 
 	lut_data->enable = kcal_enable;
 
-	mdss_mdp_kcal_update_pcc(lut_data);
-	mdss_mdp_kcal_update_pa(lut_data);
-	//mdss_mdp_kcal_update_igc(lut_data);
-	mdss_mdp_kcal_display_commit();
+	if (mdss_mdp_kcal_is_panel_on()) {
+		mdss_mdp_kcal_update_pcc(lut_data);
+		mdss_mdp_kcal_update_pa(lut_data);
+		//mdss_mdp_kcal_update_igc(lut_data);
+	} else
+		lut_data->queue_changes = true;
 
 	return count;
 }
@@ -409,10 +430,7 @@ static ssize_t kcal_invert_store(struct device *dev,
 		return -EINVAL;
 
 	//disable
-	lut_data->invert = kcal_invert;
-
-	mdss_mdp_kcal_update_igc(lut_data);
-	mdss_mdp_kcal_display_commit();
+	lut_data->invert = 0;
 
 	return count;
 }
@@ -437,8 +455,10 @@ static ssize_t kcal_sat_store(struct device *dev,
 
 	lut_data->sat = kcal_sat;
 
-	mdss_mdp_kcal_update_pa(lut_data);
-	mdss_mdp_kcal_display_commit();
+	if (mdss_mdp_kcal_is_panel_on())
+		mdss_mdp_kcal_update_pa(lut_data);
+	else
+		lut_data->queue_changes = true;
 
 	return count;
 }
@@ -463,8 +483,10 @@ static ssize_t kcal_hue_store(struct device *dev,
 
 	lut_data->hue = kcal_hue;
 
-	mdss_mdp_kcal_update_pa(lut_data);
-	mdss_mdp_kcal_display_commit();
+	if (mdss_mdp_kcal_is_panel_on())
+		mdss_mdp_kcal_update_pa(lut_data);
+	else
+		lut_data->queue_changes = true;
 
 	return count;
 }
@@ -489,8 +511,10 @@ static ssize_t kcal_val_store(struct device *dev,
 
 	lut_data->val = kcal_val;
 
-	mdss_mdp_kcal_update_pa(lut_data);
-	mdss_mdp_kcal_display_commit();
+	if (mdss_mdp_kcal_is_panel_on())
+		mdss_mdp_kcal_update_pa(lut_data);
+	else
+		lut_data->queue_changes = true;
 
 	return count;
 }
@@ -515,8 +539,10 @@ static ssize_t kcal_cont_store(struct device *dev,
 
 	lut_data->cont = kcal_cont;
 
-	mdss_mdp_kcal_update_pa(lut_data);
-	mdss_mdp_kcal_display_commit();
+	if (mdss_mdp_kcal_is_panel_on())
+		mdss_mdp_kcal_update_pa(lut_data);
+	else
+		lut_data->queue_changes = true;
 
 	return count;
 }
@@ -533,13 +559,73 @@ static DEVICE_ATTR(kcal, S_IWUSR | S_IRUGO, kcal_show, kcal_store);
 static DEVICE_ATTR(kcal_min, S_IWUSR | S_IRUGO, kcal_min_show, kcal_min_store);
 static DEVICE_ATTR(kcal_enable, S_IWUSR | S_IRUGO, kcal_enable_show,
 	kcal_enable_store);
-static DEVICE_ATTR(kcal_invert_obsolete, S_IWUSR | S_IRUGO, kcal_invert_show,
+static DEVICE_ATTR(kcal_invert, S_IWUSR | S_IRUGO, kcal_invert_show,
 	kcal_invert_store);
 static DEVICE_ATTR(kcal_sat, S_IWUSR | S_IRUGO, kcal_sat_show, kcal_sat_store);
 static DEVICE_ATTR(kcal_hue, S_IWUSR | S_IRUGO, kcal_hue_show, kcal_hue_store);
 static DEVICE_ATTR(kcal_val, S_IWUSR | S_IRUGO, kcal_val_show, kcal_val_store);
 static DEVICE_ATTR(kcal_cont, S_IWUSR | S_IRUGO, kcal_cont_show,
 	kcal_cont_store);
+
+#ifdef CONFIG_KLAPSE
+void klapse_kcal_push(int r, int g, int b)
+{
+  lut_cpy->red = r;
+	lut_cpy->green = g;
+	lut_cpy->blue = b;
+
+	mdss_mdp_kcal_update_pcc(lut_cpy);
+}
+
+/* kcal_get_color() :
+ * @param : 0 = red; 1 = green; 2 = blue;
+ * @return : Value of color corresponding to @param, or 0 if not found
+ */
+unsigned short kcal_get_color(unsigned short int code)
+{
+  if (code == 0)
+    return lut_cpy->red;
+  else if (code == 1)
+    return lut_cpy->green;
+  else if (code == 2)
+    return lut_cpy->blue;
+
+  return 0;
+}
+#endif
+
+static int mdss_mdp_kcal_update_queue(struct device *dev)
+{
+	struct kcal_lut_data *lut_data = dev_get_drvdata(dev);
+
+	if (lut_data->queue_changes) {
+		mdss_mdp_kcal_update_pcc(lut_data);
+		mdss_mdp_kcal_update_pa(lut_data);
+		mdss_mdp_kcal_update_igc(lut_data);
+		lut_data->queue_changes = false;
+	}
+
+	return 0;
+}
+
+#if defined(CONFIG_FB) && !defined(CONFIG_MMI_PANEL_NOTIFICATIONS)
+static int fb_notifier_callback(struct notifier_block *nb,
+	unsigned long event, void *data)
+{
+	int *blank;
+	struct fb_event *evdata = data;
+	struct kcal_lut_data *lut_data =
+		container_of(nb, struct kcal_lut_data, panel_nb);
+
+	if (evdata && evdata->data && event == FB_EVENT_BLANK) {
+		blank = evdata->data;
+		if (*blank == FB_BLANK_UNBLANK)
+			mdss_mdp_kcal_update_queue(&lut_data->dev);
+	}
+
+	return 0;
+}
+#endif
 
 static int kcal_ctrl_probe(struct platform_device *pdev)
 {
@@ -555,7 +641,7 @@ static int kcal_ctrl_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, lut_data);
 
-	lut_data->enable = 0x0; // KCAL driver is off by default
+	lut_data->enable = 0x1;
 	lut_data->red = DEF_PCC;
 	lut_data->green = DEF_PCC;
 	lut_data->blue = DEF_PCC;
@@ -566,37 +652,76 @@ static int kcal_ctrl_probe(struct platform_device *pdev)
 	lut_data->val = DEF_PA;
 	lut_data->cont = DEF_PA;
 
-	//mdss_mdp_kcal_update_pcc(lut_data);
-	//mdss_mdp_kcal_update_pa(lut_data);
-	//mdss_mdp_kcal_update_igc(lut_data);
-	//mdss_mdp_kcal_display_commit();
+	lut_data->queue_changes = false;
+
+	mdss_mdp_kcal_update_pcc(lut_data);
+	mdss_mdp_kcal_update_pa(lut_data);
+	mdss_mdp_kcal_update_igc(lut_data);
+
+#if defined(CONFIG_MMI_PANEL_NOTIFICATIONS)
+	lut_data->panel_nb.display_on = mdss_mdp_kcal_update_queue;
+	lut_data->panel_nb.dev = &pdev->dev;
+	ret = mmi_panel_register_notifier(&lut_data->panel_nb);
+	if (ret) {
+		pr_err("%s: unable to register MMI notifier\n", __func__);
+		return ret;
+	}
+#elif defined(CONFIG_FB)
+	lut_data->dev = pdev->dev;
+	lut_data->panel_nb.notifier_call = fb_notifier_callback;
+	ret = fb_register_client(&lut_data->panel_nb);
+	if (ret) {
+		pr_err("%s: unable to register fb notifier\n", __func__);
+		return ret;
+	}
+#endif
+
+#ifdef CONFIG_KLAPSE
+	lut_cpy = lut_data;
+#endif
 
 	ret = device_create_file(&pdev->dev, &dev_attr_kcal);
 	ret |= device_create_file(&pdev->dev, &dev_attr_kcal_min);
 	ret |= device_create_file(&pdev->dev, &dev_attr_kcal_enable);
-	ret |= device_create_file(&pdev->dev, &dev_attr_kcal_invert_obsolete);
+	ret |= device_create_file(&pdev->dev, &dev_attr_kcal_invert);
 	ret |= device_create_file(&pdev->dev, &dev_attr_kcal_sat);
 	ret |= device_create_file(&pdev->dev, &dev_attr_kcal_hue);
 	ret |= device_create_file(&pdev->dev, &dev_attr_kcal_val);
 	ret |= device_create_file(&pdev->dev, &dev_attr_kcal_cont);
 	if (ret) {
 		pr_err("%s: unable to create sysfs entries\n", __func__);
-		return ret;
+		goto out_notifier;
 	}
 
 	return 0;
+
+out_notifier:
+#if defined(CONFIG_MMI_PANEL_NOTIFICATIONS)
+	mmi_panel_unregister_notifier(&lut_data->panel_nb);
+#elif defined(CONFIG_FB)
+	fb_unregister_client(&lut_data->panel_nb);
+#endif
+	return ret;
 }
 
 static int kcal_ctrl_remove(struct platform_device *pdev)
 {
+	struct kcal_lut_data *lut_data = platform_get_drvdata(pdev);
+
 	device_remove_file(&pdev->dev, &dev_attr_kcal);
 	device_remove_file(&pdev->dev, &dev_attr_kcal_min);
 	device_remove_file(&pdev->dev, &dev_attr_kcal_enable);
-	device_remove_file(&pdev->dev, &dev_attr_kcal_invert_obsolete);
+	device_remove_file(&pdev->dev, &dev_attr_kcal_invert);
 	device_remove_file(&pdev->dev, &dev_attr_kcal_sat);
 	device_remove_file(&pdev->dev, &dev_attr_kcal_hue);
 	device_remove_file(&pdev->dev, &dev_attr_kcal_val);
 	device_remove_file(&pdev->dev, &dev_attr_kcal_cont);
+
+#if defined(CONFIG_MMI_PANEL_NOTIFICATIONS)
+	mmi_panel_unregister_notifier(&lut_data->panel_nb);
+#elif defined(CONFIG_FB)
+	fb_unregister_client(&lut_data->panel_nb);
+#endif
 
 	return 0;
 }
@@ -632,5 +757,5 @@ static void __exit kcal_ctrl_exit(void)
 	platform_driver_unregister(&kcal_ctrl_driver);
 }
 
-module_init(kcal_ctrl_init);
+late_initcall(kcal_ctrl_init);
 module_exit(kcal_ctrl_exit);

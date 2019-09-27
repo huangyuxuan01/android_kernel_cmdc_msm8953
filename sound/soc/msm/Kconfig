@@ -177,14 +177,9 @@ config SND_SOC_MSM8X16
 	select SND_SOC_WSA881X
 	select MFD_CORE
 	select QTI_PP
-	select DTS_SRS_TM
-	select DOLBY_DAP
-	select DOLBY_DS2
 	select SND_SOC_CPE
 	select SND_SOC_WCD_CPE
-	select SND_SOC_MSM_HDMI_DBA_CODEC_RX
 	select SND_HWDEP
-        select DTS_EAGLE
 	help
 	 To add support for SoC audio on MSM8996.
 	 This will enable sound soc drivers which

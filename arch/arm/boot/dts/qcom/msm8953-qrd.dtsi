@@ -98,29 +98,19 @@
 	};
 };
 
-&pm8953_typec {
-	ss-mux-supply = <&pm8953_l6>;
-	qcom,ssmux-gpio = <&tlmm 139 GPIO_ACTIVE_LOW>;
-	pinctrl-names = "default";
-	pinctrl-0 = <&typec_ssmux_config>;
-};
-
 &pmi8950_charger {
 	qcom,battery-data = <&qrd_batterydata>;
 	qcom,float-voltage-mv = <4400>;
-	qcom,chg-led-sw-controls;
-	qcom,chg-led-support;
-	qcom,external-typec;
-	qcom,typec-psy-name = "typec";
 	qcom,thermal-mitigation = <3000 2500 2000 1500 1000 500 0>;
 	status = "okay";
 };
 
 &pmi8950_fg {
 	qcom,battery-data = <&qrd_batterydata>;
-	qcom,cold-bat-decidegc = <(-100)>;
-	qcom,cool-bat-decidegc = <0>;
-	qcom,warm-bat-decidegc = <550>;
+	qcom,thermal-coefficients = [c2 86 bb 50 cf 37];
+	qcom,cold-bat-decidegc = <0>;
+	qcom,cool-bat-decidegc = <100>;
+	qcom,warm-bat-decidegc = <500>;
 	qcom,hot-bat-decidegc = <550>;
 	qcom,bad-battery-detection-enable;
 	qcom,hold-soc-while-full;
